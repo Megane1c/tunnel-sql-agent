@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:15.3-alpine
+    environment:
+      POSTGRES_USER: chinook
+      POSTGRES_PASSWORD: chinook
+      POSTGRES_DB: chinook_db
+    volumes:
+      - ./ChinookDatabase/DataSources/Chinook_PostgreSql.sql:/docker-entrypoint-initdb.d/Chinook_PostgreSql.sql
+      - ./ChinookDatabase/DataSources/Chinook_PostgreSql_AutoIncrementPKs.sql:/docker-entrypoint-initdb.d/Chinook_PostgreSql_AutoIncrementPKs.sql
+      - ./ChinookDatabase/DataSources/Chinook_PostgreSql_SerialPKs.sql:/docker-entrypoint-initdb.d/Chinook_PostgreSql_SerialPKs.sql
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "chinook" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - net
+
+  bridge:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    environment:
+      # Connection to the local DB service
+      DB_URL: "postgresql://chinook:chinook@db:5432/chinook"
+      # Credentials for the tunnel
+      AAAS_TOKEN: "client_1:pass_123"
+      # Where the server is listening
+      AAAS_TUNNEL_HOST: "host.docker.internal:9090"
+      # The port this client wants to expose on
+      REMOTE_PORT: "10001"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - net
+
+networks:
+  net:
+    driver: bridge
+
+
